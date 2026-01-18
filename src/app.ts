@@ -8,6 +8,7 @@ import {
   startConnection,
   stopConnection,
 } from "./services/daemoService";
+import { SYSTEM_PROMPT } from "./lib/prompts";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -23,14 +24,7 @@ app.get("/health", (req, res) => {
 const server = app.listen(PORT, async () => {
   console.log(`Server is running on http://localhost:${PORT}\n`);
 
-  const systemPrompt = `
-  You are a news briefer. Your job is to summarize relevant news based on a user's query.
-  IMPORTANT:
-    - Your responses must be relevant to the user's query. Do not include any irrelevant information.
-    - If a user's query is too vague, ask follow-up questions for more specific information.
-    - Format your responses in a concise, engaging, and readable manner.
-  `.trim();
-  const sessionData = initializeDaemo(systemPrompt);
+  const sessionData = initializeDaemo(SYSTEM_PROMPT);
   daemoConnection = await startConnection(sessionData);
   daemoClient = new DaemoClient({
     daemoAgentUrl: process.env.DAEMO_GATEWAY_URL,

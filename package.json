@@ -24,6 +24,8 @@
   "dependencies": {
     "@types/express": "^5.0.6",
     "daemo-engine": "^0.2.4",
+    "date-fns": "^4.1.0",
+    "date-fns-tz": "^3.2.0",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
     "morgan": "^1.10.1",

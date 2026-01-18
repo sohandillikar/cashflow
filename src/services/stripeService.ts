@@ -125,6 +125,10 @@ export class StripeService {
 				}),
 			),
 			insights: z.array(z.string()).describe("Key insights and observations"),
+			error: z
+				.string()
+				.optional()
+				.describe("Error message if the function fails"),
 		}),
 	})
 	async analyzeRevenueTrends(args: {
@@ -219,7 +223,7 @@ export class StripeService {
 		outputSchema: z.object({
 			payments: z.array(
 				z.object({
-					id: z.string().describe("Checkout session ID"),
+					paymentIntentId: z.string().nullable().describe("Payment intent ID"),
 					date: z.string().describe("Payment date formatted in Pacific Time"),
 					totalAmount: z.number().describe("Total order amount in USD"),
 					customerDetails: z.object({
@@ -238,7 +242,7 @@ export class StripeService {
 						}),
 					),
 					shippingDetails: z.object({
-						address: z.string().describe("Delivery address"),
+						address: z.string().nullable().describe("Delivery address"),
 						totalAmount: z.number().describe("Shipping cost in USD"),
 					}),
 				}),
@@ -249,6 +253,10 @@ export class StripeService {
 					.describe("Total number of payments in the period"),
 				totalRevenue: z.number().describe("Total revenue in USD"),
 			}),
+			error: z
+				.string()
+				.optional()
+				.describe("Error message if the function fails"),
 		}),
 	})
 	async getPaymentHistory(args: { startDate: string; endDate: string }) {
@@ -311,7 +319,7 @@ export class StripeService {
 				};
 
 				return {
-					id: session.id,
+					paymentIntentId: session.payment_intent as string,
 					date: new Date(session.created * 1000).toLocaleString("en-US", {
 						timeZone: "America/Los_Angeles",
 					}),
@@ -322,13 +330,13 @@ export class StripeService {
 				};
 			});
 
+			console.log(payments);
+
 			// Calculate summary
 			const totalRevenue = payments.reduce(
 				(sum, payment) => sum + payment.totalAmount,
 				0,
 			);
-
-			console.log(payments);
 
 			return {
 				payments,
@@ -353,6 +361,52 @@ export class StripeService {
 	}
 
 	@DaemoFunction({
+		description: "Issue a full or partial refund for a payment. Use the getPaymentHistory function to get the paymentIntentId for a specific payment.",
+		inputSchema: z.object({
+			paymentIntentId: z
+				.string()
+				.startsWith("pi_")
+				.describe("Payment intent ID to refund (e.g., pi_xxxxx)"),
+			amount: z.number().describe("Amount to refund in USD. IMPORTANT: This must be less than or equal to the total amount of the payment."),
+		}),
+		outputSchema: z.object({
+			status: z
+				.string()
+				.describe("Status of the refund operation ('success' or 'error')"),
+			amountRefunded: z.number().describe("Amount refunded in USD"),
+			error: z
+				.string()
+				.optional()
+				.describe("Error message if the function fails"),
+		}),
+	})
+	async issueRefund(args: { paymentIntentId: string; amount: number }) {
+		try {
+			const { paymentIntentId, amount } = args;
+
+			// Create the refund using the payment intent
+			const refund = await stripe.refunds.create({
+				payment_intent: paymentIntentId,
+				amount: Math.round(amount * 100), // Convert dollars to cents
+			});
+
+			return {
+				status: "success",
+				amountRefunded: refund.amount / 100, // Convert cents back to dollars
+			};
+		} catch (error) {
+			console.error("Error issuing refund:", error);
+			const errorMessage =
+				error instanceof Error ? error.message : "Unknown error";
+			return {
+				status: "error",
+				amountRefunded: 0,
+				error: `Failed to issue refund: ${errorMessage}`,
+			};
+		}
+	}
+
+	@DaemoFunction({
 		description:
 			"Get the current date, time, and weekday. Use this function for date or time sensitive queries, instead of assuming or guessing the date or time.",
 		inputSchema: z.object({}),
@@ -368,27 +422,29 @@ export class StripeService {
 		const now = new Date();
 
 		// Get date in YYYY-MM-DD format (Pacific Time)
-		const dateParts = now.toLocaleDateString('en-US', {
-			timeZone: 'America/Los_Angeles',
-			year: 'numeric',
-			month: '2-digit',
-			day: '2-digit'
-		}).split('/');
+		const dateParts = now
+			.toLocaleDateString("en-US", {
+				timeZone: "America/Los_Angeles",
+				year: "numeric",
+				month: "2-digit",
+				day: "2-digit",
+			})
+			.split("/");
 		const date = `${dateParts[2]}-${dateParts[0]}-${dateParts[1]}`; // YYYY-MM-DD
 
 		// Get time in HH:MM:SS format (Pacific Time)
-		const time = now.toLocaleTimeString('en-US', {
-			timeZone: 'America/Los_Angeles',
+		const time = now.toLocaleTimeString("en-US", {
+			timeZone: "America/Los_Angeles",
 			hour12: false,
-			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit'
+			hour: "2-digit",
+			minute: "2-digit",
+			second: "2-digit",
 		});
 
 		// Get weekday (Pacific Time)
-		const weekday = now.toLocaleDateString('en-US', {
-			timeZone: 'America/Los_Angeles',
-			weekday: 'long'
+		const weekday = now.toLocaleDateString("en-US", {
+			timeZone: "America/Los_Angeles",
+			weekday: "long",
 		});
 
 		return {

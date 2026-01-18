@@ -328,6 +328,8 @@ export class StripeService {
 				0,
 			);
 
+			console.log(payments);
+
 			return {
 				payments,
 				summary: {

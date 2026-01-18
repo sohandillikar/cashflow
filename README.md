@@ -8,6 +8,14 @@ A Stripe integrated finance agent built on Daemo's engine.
 - **Refund Processing** - Issue full or partial refunds for payments
 - **Payment History** - Retrieve detailed payment records including customer information, purchased items, and shipping details
 
+## Screenshots
+
+![Screenshot 1](public/screenshot1.png)
+
+![Screenshot 2](public/screenshot2.png)
+
+![Screenshot 3](public/screenshot3.png)
+
 ## Setup
 
 1. Install dependencies:

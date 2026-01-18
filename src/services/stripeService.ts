@@ -330,8 +330,6 @@ export class StripeService {
 				};
 			});
 
-			console.log(payments);
-
 			// Calculate summary
 			const totalRevenue = payments.reduce(
 				(sum, payment) => sum + payment.totalAmount,

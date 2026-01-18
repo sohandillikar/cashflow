@@ -2,6 +2,12 @@
 
 A Stripe integrated finance agent built on Daemo's engine.
 
+## Features
+
+- **Revenue Analytics** - Analyze revenue trends over custom time periods
+- **Refund Processing** - Issue full or partial refunds for payments
+- **Payment History** - Retrieve detailed payment records including customer information, purchased items, and shipping details
+
 ## Setup
 
 1. Install dependencies:
@@ -29,11 +35,3 @@ npm run dev
 ```
 
 The server will start on `http://localhost:3000` (or the port specified in your `.env` file).
-
-## Planning
-
-Features:
-
-- Explain revenue trends
-- Flag failed payments
-- Issue refunds

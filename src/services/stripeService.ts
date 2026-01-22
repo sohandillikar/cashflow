@@ -211,7 +211,7 @@ export class StripeService {
 
 	@DaemoFunction({
 		description:
-			"Retrieve detailed payment history for a specified time period. Returns customer details, purchased items, and shipping information for each payment.",
+			"Retrieve order history for a specified time period. Returns customer details, purchased items, and shipping information for each order.",
 		inputSchema: z.object({
 			startDate: z
 				.string()
@@ -221,10 +221,10 @@ export class StripeService {
 				.describe("End date and time in 'YYYY-MM-DD HH:MM:SS' format"),
 		}),
 		outputSchema: z.object({
-			payments: z.array(
+			orders: z.array(
 				z.object({
 					paymentIntentId: z.string().nullable().describe("Payment intent ID"),
-					date: z.string().describe("Payment date formatted in Pacific Time"),
+					date: z.string().describe("Order date formatted in Pacific Time"),
 					totalAmount: z.number().describe("Total order amount in USD"),
 					customerDetails: z.object({
 						name: z.string().nullable().describe("Customer name"),
@@ -248,9 +248,9 @@ export class StripeService {
 				}),
 			),
 			summary: z.object({
-				totalPayments: z
+				totalOrders: z
 					.number()
-					.describe("Total number of payments in the period"),
+					.describe("Total number of orders in the period"),
 				totalRevenue: z.number().describe("Total revenue in USD"),
 			}),
 			error: z
@@ -259,7 +259,7 @@ export class StripeService {
 				.describe("Error message if the function fails"),
 		}),
 	})
-	async getPaymentHistory(args: { startDate: string; endDate: string }) {
+	async getOrderHistory(args: { startDate: string; endDate: string }) {
 		try {
 			const { startDate, endDate } = args;
 
@@ -298,7 +298,7 @@ export class StripeService {
 			}
 
 			// Parse each session
-			const payments = allSessions.map((session) => {
+			const orders = allSessions.map((session) => {
 				const customerDetails = {
 					name: session.customer_details?.name ?? null,
 					email: session.customer_details?.email ?? null,
@@ -331,41 +331,41 @@ export class StripeService {
 			});
 
 			// Calculate summary
-			const totalRevenue = payments.reduce(
-				(sum, payment) => sum + payment.totalAmount,
+			const totalRevenue = orders.reduce(
+				(sum, order) => sum + order.totalAmount,
 				0,
 			);
 
 			return {
-				payments,
+				orders,
 				summary: {
-					totalPayments: payments.length,
+					totalOrders: orders.length,
 					totalRevenue: Math.round(totalRevenue * 100) / 100,
 				},
 			};
 		} catch (error) {
-			console.error("Error retrieving payment history:", error);
+			console.error("Error retrieving order history:", error);
 			const errorMessage =
 				error instanceof Error ? error.message : "Unknown error";
 			return {
-				payments: [],
+				orders: [],
 				summary: {
-					totalPayments: 0,
+					totalOrders: 0,
 					totalRevenue: 0,
 				},
-				error: `Failed to retrieve payment history: ${errorMessage}`,
+				error: `Failed to retrieve order history: ${errorMessage}`,
 			};
 		}
 	}
 
 	@DaemoFunction({
-		description: "Issue a full or partial refund for a payment. Use the getPaymentHistory function to get the paymentIntentId for a specific payment.",
+		description: "Issue a refund for an order. Use the getOrderHistory function to get the paymentIntentId for a specific order.",
 		inputSchema: z.object({
 			paymentIntentId: z
 				.string()
 				.startsWith("pi_")
 				.describe("Payment intent ID to refund (e.g., pi_xxxxx)"),
-			amount: z.number().describe("Amount to refund in USD. IMPORTANT: This must be less than or equal to the total amount of the payment."),
+			amount: z.number().describe("Amount to refund in USD. IMPORTANT: This must be less than or equal to the total amount of the order."),
 		}),
 		outputSchema: z.object({
 			status: z
